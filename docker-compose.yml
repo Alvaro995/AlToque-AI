@@ -1,0 +1,72 @@
+# =============================================================================
+# AlToque AI -- Docker Compose
+# =============================================================================
+# Services: API (FastAPI), PostgreSQL 16 + pgvector, Redis 7
+# =============================================================================
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: altoque_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-altoque}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-altoque_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-altoque_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-altoque}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: altoque_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: altoque_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-altoque}:${POSTGRES_PASSWORD:-altoque_dev}@db:5432/${POSTGRES_DB:-altoque_db}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-change-this-to-a-secure-random-string}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o}
+      DEBUG: ${DEBUG:-true}
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+  uploads:
+    driver: local
