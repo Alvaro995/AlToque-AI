@@ -5,6 +5,8 @@
 Copiloto inteligente de prevención y acompañamiento metabólico para personas con prediabetes o riesgo metabólico confirmado.
 
 ---
+Link del canva: https://canva.link/u8c6ycxflgkxhru
+Link de la app: https://gluco-family-guide.lovable.app/
 
 ## 1. Nombre y Misión
 
