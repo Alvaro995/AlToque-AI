@@ -1,8 +1,13 @@
 from fastapi import FastAPI
 
 from app.core.database import Base, engine
-from app.habits import models
+
+from app.habits import models as habits_models
+from app.users import models as users_models
+
+
 from app.habits.router import router as habits_router
+from app.users.router import router as users_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -31,3 +36,6 @@ def health():
         "service": "altoque-ai",
         "status": "ok"
     }
+
+from app.users.router import router as users_router
+app.include_router(users_router)
