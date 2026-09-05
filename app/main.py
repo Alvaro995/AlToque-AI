@@ -13,7 +13,8 @@ from app.profiles import models as profiles_models
 from app.habits.router import router as habits_router
 from app.users.router import router as users_router
 from app.profiles.router import router as profiles_router
-
+from app.risk.router import router as risk_router
+from app.chatbot.router import router as chatbot_router
 
 # Crear tablas en PostgreSQL
 Base.metadata.create_all(bind=engine)
@@ -38,7 +39,9 @@ app.include_router(users_router)
 
 app.include_router(profiles_router)
 
+app.include_router(risk_router)
 
+app.include_router(chatbot_router)
 
 @app.get("/")
 def root():
