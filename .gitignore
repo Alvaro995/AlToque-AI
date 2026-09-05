@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker
+docker-compose.override.yml
+
+# Flutter
+app/mobile/**/build/
+app/mobile/**/.dart_tool/
+app/mobile/**/.flutter-plugins
+app/mobile/**/.flutter-plugins-dependencies
+app/mobile/**/.packages
+app/mobile/**/pubspec.lock
+
+# ML artifacts
+backend/app/ml/models/*.pkl
+backend/app/ml/models/*.joblib
+*.h5
+*.onnx
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite3
+
+# Uploads
+uploads/
+temp/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+
+# Alembic
+backend/alembic/versions/*.pyc
