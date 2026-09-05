@@ -1,9 +1,13 @@
-"""Configuración de base de datos asíncrona con SQLAlchemy y fallback resiliente."""
+"""Configuración de base de datos asíncrona con SQLAlchemy y persistencia real."""
 
+import logging
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import text
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class Base(DeclarativeBase):
@@ -11,66 +15,63 @@ class Base(DeclarativeBase):
     pass
 
 
-# Inicialización resiliente del motor para ambientes locales o de pruebas
 engine = None
 async_session_factory = None
 
-try:
-    if "postgresql+asyncpg" in settings.database_url:
-        import asyncpg
-    engine = create_async_engine(
-        settings.database_url,
-        echo=settings.debug,
-        pool_size=10,
-        max_overflow=20,
-        pool_pre_ping=True,
+
+def create_engine_and_factory(db_url: str):
+    """Crea un motor asíncrono y su fábrica de sesiones."""
+    is_sqlite = "sqlite" in db_url
+    eng = create_async_engine(
+        db_url,
+        echo=False,
+        **(
+            {"connect_args": {"check_same_thread": False}}
+            if is_sqlite
+            else {"pool_size": 10, "max_overflow": 20, "pool_pre_ping": True}
+        ),
     )
-    async_session_factory = async_sessionmaker(
-        engine,
+    factory = async_sessionmaker(
+        eng,
         class_=AsyncSession,
         expire_on_commit=False,
     )
-except (ImportError, Exception):
+    return eng, factory
+
+
+# Configuración inicial con la URL de configuración o SQLite local persistente
+primary_url = settings.async_database_url
+try:
+    if "postgresql" in primary_url:
+        import asyncpg
+    engine, async_session_factory = create_engine_and_factory(primary_url)
+except (ImportError, ModuleNotFoundError, Exception) as exc:
+    logger.info("Driver postgresql/asyncpg no disponible localmente (%s). Usando SQLite persistente.", exc)
+    fallback_url = "sqlite+aiosqlite:///./altoque.db"
+    engine, async_session_factory = create_engine_and_factory(fallback_url)
+
+
+async def init_database():
+    """Inicializa la base de datos, valida la conectividad y crea todas las tablas reales."""
+    global engine, async_session_factory
+    import app.models  # Importa todos los modelos ORM para registrarlos en Base.metadata
+
     try:
-        import aiosqlite
-        engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
-        async_session_factory = async_sessionmaker(
-            engine,
-            class_=AsyncSession,
-            expire_on_commit=False,
-        )
-    except Exception:
-        engine = None
-        async_session_factory = None
-
-
-class DummyAsyncSession:
-    """Sesión simulada para pruebas o ambientes sin conexión activa."""
-
-    def add(self, instance):
-        pass
-
-    async def commit(self):
-        pass
-
-    async def rollback(self):
-        pass
-
-    async def refresh(self, instance):
-        pass
-
-    async def close(self):
-        pass
-
-    async def execute(self, statement, *args, **kwargs):
-        return None
+        async with engine.begin() as conn:
+            await conn.execute(text("SELECT 1"))
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Tablas de base de datos creadas/verificadas exitosamente.")
+    except Exception as exc:
+        logger.warning("Error al inicializar con motor principal (%s). Cambiando a SQLite persistente ./altoque.db", exc)
+        fallback_url = "sqlite+aiosqlite:///./altoque.db"
+        engine, async_session_factory = create_engine_and_factory(fallback_url)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Base de datos SQLite persistente inicializada correctamente en ./altoque.db")
 
 
 async def get_db():
     """Inyector de sesión asíncrona por petición HTTP."""
-    if async_session_factory is None:
-        yield DummyAsyncSession()
-        return
     async with async_session_factory() as session:
         try:
             yield session
@@ -80,4 +81,3 @@ async def get_db():
             raise
         finally:
             await session.close()
-

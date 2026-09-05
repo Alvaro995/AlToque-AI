@@ -10,10 +10,13 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+from app.database import init_database
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gestor de ciclo de vida para inicio y parada del servicio."""
     logger.info("Iniciando backend AlToque AI versión %s", settings.app_version)
+    await init_database()
     yield
     logger.info("Deteniendo backend AlToque AI")
 
@@ -31,10 +34,11 @@ app = FastAPI(
     redoc_url="/redoc" if settings.debug else None,
 )
 
-# Configuración de CORS
+# Configuración de CORS con soporte para Vercel y desarrollo local
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

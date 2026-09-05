@@ -44,16 +44,31 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
     max_upload_size_mb: int = 10
 
+    # Puerto de servicio (compatible con $PORT de Railway)
+    port: int = 8000
+
     # CORS
-    cors_origins: str = '["http://localhost:3000","http://localhost:8080"]'
+    cors_origins: str = '["http://localhost:3000","http://localhost:8080","http://localhost:5173"]'
+
+    @property
+    def async_database_url(self) -> str:
+        """Normaliza la URL de PostgreSQL para garantizar el uso del driver asyncpg."""
+        url = self.database_url
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
 
     @property
     def cors_origins_list(self) -> List[str]:
-        """Obtiene lista de orígenes CORS parseados."""
+        """Obtiene lista de orígenes CORS parseados desde JSON o texto separado por comas."""
         try:
             return json.loads(self.cors_origins)
         except (json.JSONDecodeError, TypeError):
-            return ["http://localhost:3000"]
+            if "," in self.cors_origins:
+                return [orig.strip() for orig in self.cors_origins.split(",") if orig.strip()]
+            return [self.cors_origins.strip()] if self.cors_origins.strip() else ["*"]
 
     model_config = {
         "env_file": ".env",
