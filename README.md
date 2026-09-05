@@ -62,8 +62,7 @@ El Producto Mínimo Viable incluye:
 * Soporte para:
 
   * Paciente.
-  * Persona encargada.
-  * Médico.
+  * Persona encargada
 * Permisos diferenciados según el tipo de usuario.
 
 ### Perfil progresivo
