@@ -1,10 +1,20 @@
 from fastapi import FastAPI
 
+from app.core.database import Base, engine
+from app.habits import models
+from app.habits.router import router as habits_router
+
+Base.metadata.create_all(bind=engine)
+
+
 app = FastAPI(
     title="AlToque AI API",
     description="Backend central de AlToque AI",
-    version="0.1.0"
+    version="0.2.0"
 )
+
+
+app.include_router(habits_router)
 
 
 @app.get("/")
